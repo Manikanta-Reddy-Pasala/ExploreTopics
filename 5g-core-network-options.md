@@ -53,12 +53,14 @@ This is a development/test/demo workload — not carrier-grade.
 
 | | Open5GS | free5GC | Radisys |
 |---|---|---|---|
-| **One-liner** | Lean C core — full 5GC + EPC in ~2 GB RAM | Go core — **all CP in a single Docker image**, lightweight for lab | Vendor black-box — overkill for lab use |
-| **Best for** | Smallest footprint, hybrid LTE+5G, bare-metal simplicity | Single-container lab, K8s-optional, Apache 2.0 license | Zero in-house expertise, unlimited budget |
-| **NUC 15 fit** | **Excellent** — barely touches the hardware | **Excellent** — single container makes it trivial | **Poor** — not designed for single-node |
+| **One-liner** | Lean C core — full 5GC + EPC in ~2 GB RAM | Go core — **all CP in a single Docker image**, lightweight for lab | Binary black-box — only IPF source code, 15 mandatory frameworks, bloated images |
+| **Best for** | Smallest footprint, hybrid LTE+5G, bare-metal simplicity | Single-container lab, K8s-optional, Apache 2.0 license | Zero in-house expertise, unlimited budget, carrier-grade requirements |
+| **NUC 15 fit** | **Excellent** — barely touches the hardware | **Excellent** — single container makes it trivial | **Poor** — 15 framework components + multi-GB images overwhelm a NUC |
+| **Source access** | Full (AGPLv3) | Full (Apache 2.0) | **IPF only** — all NFs are binaries |
 | **License** | AGPLv3 (copyleft) | Apache 2.0 (permissive) | Proprietary |
-| **Language** | C | Go | Undisclosed |
-| **Deployment for lab** | `apt install` or Docker Compose | **Single Docker image** (all CP NFs) + UPF | Vendor professional services |
+| **Language** | C | Go | Undisclosed (binaries) |
+| **Deployment for lab** | `apt install` or Docker Compose | **Single Docker image** (all CP NFs) + UPF | 20+ containers (9 NFs + 15 frameworks) — vendor PS required |
+| **Image sizes** | ~50-100 MB per NF | ~200-500 MB all CP NFs | **2-5+ GB per NF** (framework bloat) |
 | **Year-1 NUC TCO** | **$800-1.5K** | **$800-1.5K** | **$200K+** (absurd for lab) |
 
 ### Decision Matrix for Our Scale
@@ -72,7 +74,7 @@ This is a development/test/demo workload — not carrier-grade.
 | Broadest NF coverage (N3IWF, CHF, NEF) | **free5GC** |
 | No kernel module hassle | **Open5GS** |
 | Testing 20 attached + 200 ident + 400 reject | **Either** — both handle this effortlessly |
-| Vendor SLA, turnkey | **Radisys** (but not on a NUC, not for lab) |
+| Vendor SLA, turnkey (with patience) | **Radisys** (but not on a NUC, not for lab; expect slow turnaround) |
 
 ---
 
@@ -82,21 +84,21 @@ This is a development/test/demo workload — not carrier-grade.
 
 | Criteria | Open5GS | free5GC | Radisys | Notes |
 |---|:---:|:---:|:---:|---|
-| **NUC 15 Deployability** | **5** | **5** | 1 | Both trivial on NUC 15; free5GC single-image changes the game |
-| **Deployment Simplicity** | **5** | 4 | 2 | Open5GS: apt install. free5GC: single docker run + UPF |
-| **Cloud-Native Readiness** | 2 | **5** | 3 | free5GC still K8s-ready if needed later |
-| **Resource Efficiency** | **5** | 4 | 2 | Both are light at 20-UE scale; Open5GS still leaner |
+| **NUC 15 Deployability** | **5** | **5** | 1 | Radisys: 15 frameworks + multi-GB images barely fit a NUC |
+| **Deployment Simplicity** | **5** | 4 | 1 | Radisys: 20+ containers with interdependencies, vendor PS needed |
+| **Cloud-Native Readiness** | 2 | **5** | 3 | free5GC K8s-ready; Radisys expects K8s but with massive overhead |
+| **Resource Efficiency** | **5** | 4 | 1 | Radisys: 8-16 GB RAM just for frameworks before any UE attaches |
 | **NF Coverage Breadth** | 3 | **5** | 3 | free5GC: N3IWF, TNGF, CHF, NEF |
 | **4G/5G Hybrid Support** | **5** | 1 | 2 | Open5GS: EPC + 5GC in one codebase |
-| **Code Auditability** | 5 | 5 | 0 | OSS = full audit; Radisys = black box |
-| **Customizability** | 5 | 5 | 1 | Source access vs vendor request queue |
-| **Vendor Support / SLA** | 1 | 1 | 5 | Only Radisys offers contractual SLA |
+| **Code Auditability** | 5 | 5 | 0 | Radisys: only IPF source; all NFs are opaque binaries |
+| **Customizability** | 5 | 5 | 0 | Radisys: can only modify IPF; NFs are untouchable binaries |
+| **Vendor Support / SLA** | 1 | 1 | 4 | Radisys has SLA but "takes time" for image/feature requests |
 | **Hiring Pool** | 2 | 4 | N/A | Go devs >> C + telecom specialists |
 | **License Flexibility** | 2 | **5** | 1 | Apache 2.0 is most business-friendly |
-| **Supply Chain Control** | 5 | 5 | 0 | Full SBOM, image signing for OSS |
-| **Community & Ecosystem** | 4 | 4 | 1 | Both OSS have active communities |
-| **Lab/PoC Suitability** | **5** | **5** | 1 | Both are made for this; Radisys is not |
-| **Total (out of 70)** | **54** | **58** | **22** | free5GC edges ahead for lab with single-image simplicity |
+| **Supply Chain Control** | 5 | 5 | 0 | Radisys: no SBOM, cannot scan binaries, no source audit |
+| **Community & Ecosystem** | 4 | 4 | 1 | Both OSS have active communities; Radisys = vendor tickets |
+| **Lab/PoC Suitability** | **5** | **5** | 0 | Radisys 15 frameworks make lab use impractical |
+| **Total (out of 70)** | **54** | **58** | **17** | Radisys score drops with real-world experience; frameworks kill lab use |
 
 > **At our scale (20 attached / 200 ident / 400 reject):** Both OSS options are **overkill** — the NUC 15 will be mostly idle. The choice comes down to deployment style preference (apt vs Docker) and license needs.
 
@@ -374,28 +376,82 @@ For our 20-UE lab, the **single CP image** approach is the clear winner — it e
 
 ---
 
-### 5.3 Radisys 5G Core
+### 5.3 Radisys 5G Core — Vendor Reality
 
 ```
-┌──────────────────────────────────────────────────────┐
-│              Radisys 5G Core (Vendor)                 │
-│                                                      │
-│  ┌────────────────────────────────────────────────┐  │
-│  │       Pre-built NF Bundle (Opaque)             │  │
-│  │  AMF | SMF | UPF | NRF | UDM | AUSF | PCF     │  │
-│  └────────────────────────────────────────────────┘  │
-│                                                      │
-│  ┌────────────────────────────────────────────────┐  │
-│  │  Management & Orchestration Portal             │  │
-│  └────────────────────────────────────────────────┘  │
-│                                                      │
-│  Designed for: multi-node server clusters             │
-│  Not designed for: single NUC, lab use                │
-│  Cost: $200K+ — absurd for 20-UE lab                 │
-└──────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│              Radisys 5G Core — What You Actually Get                   │
+│                                                                      │
+│  ┌─────── Source Code Access (1 of ~20 components) ───────────────┐  │
+│  │  IPF (Interoperability Framework)                              │  │
+│  │  └── The ONLY codebase you can read, modify, or debug          │  │
+│  └────────────────────────────────────────────────────────────────┘  │
+│                                                                      │
+│  ┌─────── Binary-Only Components (everything else) ───────────────┐  │
+│  │                                                                │  │
+│  │  5G NFs (opaque binaries):                                     │  │
+│  │  AMF │ SMF │ UPF │ NRF │ UDM │ UDR │ AUSF │ PCF │ NSSF       │  │
+│  │                                                                │  │
+│  │  15 Mandatory Framework Components (cannot remove):            │  │
+│  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐          │  │
+│  │  │FrameworkA│ │FrameworkB│ │FrameworkC│ │FrameworkD│          │  │
+│  │  └──────────┘ └──────────┘ └──────────┘ └──────────┘          │  │
+│  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐          │  │
+│  │  │FrameworkE│ │FrameworkF│ │FrameworkG│ │FrameworkH│          │  │
+│  │  └──────────┘ └──────────┘ └──────────┘ └──────────┘          │  │
+│  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐          │  │
+│  │  │FrameworkI│ │FrameworkJ│ │FrameworkK│ │FrameworkL│          │  │
+│  │  └──────────┘ └──────────┘ └──────────┘ └──────────┘          │  │
+│  │  ┌──────────┐ ┌──────────┐ ┌──────────┐                       │  │
+│  │  │FrameworkM│ │FrameworkN│ │FrameworkO│  ← ALL mandatory      │  │
+│  │  └──────────┘ └──────────┘ └──────────┘                       │  │
+│  │                                                                │  │
+│  │  You cannot remove, slim down, or inspect any of these.        │  │
+│  │  Every NF depends on all 15 framework components.              │  │
+│  └────────────────────────────────────────────────────────────────┘  │
+│                                                                      │
+│  ┌─────── Docker Image Sizes ─────────────────────────────────────┐  │
+│  │                                                                │  │
+│  │  Radisys NF images:  2-5+ GB EACH  (bloated with frameworks)  │  │
+│  │  Open5GS equivalent: ~50-100 MB per NF                        │  │
+│  │  free5GC equivalent: ~200-500 MB for ALL CP NFs               │  │
+│  │                                                                │  │
+│  │  Requested image size reduction → "takes time" (months)        │  │
+│  └────────────────────────────────────────────────────────────────┘  │
+│                                                                      │
+│  Designed for: multi-node server clusters with unlimited resources   │
+│  Not designed for: single NUC, lab use, resource-constrained env     │
+│  Cost: $200K+ — absurd for 20-UE lab                                 │
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
-**Lab Reality Check:** Radisys is a commercial-grade vendor solution designed for carrier deployments. Using it for a 20-UE lab on a NUC 15 would be like renting a Boeing 747 to fly across a parking lot. Included here for completeness only.
+**What You Can and Cannot Do with Radisys:**
+
+| Aspect | Reality |
+|---|---|
+| **Source code access** | **IPF only** — one component out of ~20 |
+| **Everything else** | Pre-compiled binaries — cannot read, audit, or modify |
+| **Framework components** | **15 mandatory** — all NFs depend on all 15, cannot remove any |
+| **Image sizes** | **2-5+ GB per NF image** — bloated with framework dependencies |
+| **Image optimization** | Requested reduction → vendor says "takes time" (weeks to months) |
+| **Bug in NF logic** | Open a ticket → wait for vendor release (days to weeks) |
+| **Bug in IPF** | You can fix it yourself (the only component you can) |
+| **Custom NF behavior** | Not possible — binary, no hooks, no extension points |
+| **Debugging a crash** | Read logs, hope they're descriptive, then open a vendor ticket |
+| **Upgrade cycle** | Vendor-driven — you upgrade when they release, on their schedule |
+
+**The 15 Mandatory Framework Components Problem:**
+
+This is the critical architectural issue. Radisys requires **15 framework/infrastructure components** to be running alongside the actual 5G NFs. These include internal service mesh, logging agents, config management, health checkers, and proprietary orchestration layers. **None can be removed.** Even if you only need AMF + SMF + UPF for a basic lab, you must deploy all 15 frameworks.
+
+Impact:
+- **Disk:** 15 framework images + 9 NF images = **30-50+ GB** of Docker images (vs ~500 MB for all of Open5GS)
+- **RAM:** Framework overhead alone can consume **8-16+ GB** before a single UE attaches
+- **Startup time:** Minutes to spin up all components vs seconds for OSS
+- **Complexity:** 20+ containers/pods with interdependencies vs 1-4 containers for OSS
+- **NUC 15 viability:** Marginal at best — the 15 frameworks alone may consume half the NUC's resources
+
+**Lab Reality Check:** Radisys is a commercial-grade vendor solution designed for carrier deployments on server clusters. The 15 mandatory framework components and multi-GB images make it fundamentally incompatible with single-NUC lab use. The only source code you get (IPF) is a small fraction of the total system. Using it for a 20-UE lab would be like renting a Boeing 747 to fly across a parking lot — except the 747 also requires its own airport infrastructure (the 15 frameworks).
 
 ---
 
@@ -411,12 +467,14 @@ For our 20-UE lab, the **single CP image** approach is the clear winner — it e
 | **UDR** | Unified Data Repository | Yes | Yes | Yes |
 | **AUSF** | Authentication Server | Yes | Yes | Yes |
 | **PCF** | Policy Control Function | Yes | Yes | Yes |
-| **NSSF** | Network Slice Selection | Yes | Yes | Claimed |
+| **NSSF** | Network Slice Selection | Yes | Yes | Binary — claimed |
 | **SCP** | Service Communication Proxy | Yes | Partial | Unknown |
-| **NEF** | Network Exposure Function | Partial | **Yes** | Claimed |
-| **N3IWF** | Non-3GPP Interworking (WiFi) | No | **Yes** | Claimed |
+| **NEF** | Network Exposure Function | Partial | **Yes** | Binary — claimed |
+| **N3IWF** | Non-3GPP Interworking (WiFi) | No | **Yes** | Binary — claimed |
 | **TNGF** | Trusted Non-3GPP Gateway | No | **Yes** | Unknown |
-| **CHF** | Charging Function | No | **Yes** | Claimed |
+| **CHF** | Charging Function | No | **Yes** | Binary — claimed |
+| **IPF** | Interoperability Framework | N/A | N/A | **Source available** (only open component) |
+| **Framework (x15)** | Mandatory infrastructure | N/A | N/A | **Binary — all 15 required** |
 | **EPC (4G)** | MME, SGW, PGW, HSS, PCRF | **Yes (full)** | No | Separate product |
 | **WebUI** | Subscriber Management | Community tools | **Built-in** | Vendor portal |
 
@@ -434,15 +492,16 @@ For our 20-UE lab, the **single CP image** approach is the clear winner — it e
 
 | Aspect | Open5GS (C) | free5GC (Go) | Radisys |
 |---|---|---|---|
-| **Memory Safety** | Manual — careful coding needed | GC-managed — safe by default | Cannot audit |
-| **Performance** | Excellent — deterministic latency | Good — slight GC overhead | Unverifiable |
-| **Concurrency** | Event-driven (epoll/kqueue) | Goroutines — lightweight threads | Unknown |
-| **Testability** | Unit tests; fewer C frameworks | Go built-in `testing` package | Internal QA only |
-| **Build** | Meson + Ninja (~2 min) | `go build` (~1 min per NF) | N/A |
-| **Debugging** | GDB, Valgrind, AddressSanitizer | Delve, pprof — modern, accessible | Vendor tickets |
-| **IDE Support** | Good (CLion, VS Code + C) | Excellent (GoLand, VS Code + Go) | N/A |
-| **Hiring Difficulty** | **High** — C + telecom | **Low-Medium** — large Go pool | N/A |
-| **Onboarding Time** | 4-8 weeks | 2-4 weeks | N/A |
+| **Memory Safety** | Manual — careful coding needed | GC-managed — safe by default | Cannot audit (binaries) |
+| **Performance** | Excellent — deterministic latency | Good — slight GC overhead | Unverifiable — cannot profile internals |
+| **Concurrency** | Event-driven (epoll/kqueue) | Goroutines — lightweight threads | Unknown — binary, undocumented |
+| **Testability** | Unit tests; fewer C frameworks | Go built-in `testing` package | Internal QA only; can test IPF only |
+| **Build** | Meson + Ninja (~2 min) | `go build` (~1 min per NF) | IPF only — NFs are pre-built |
+| **Debugging** | GDB, Valgrind, AddressSanitizer | Delve, pprof — modern, accessible | **Logs only** — can debug IPF; NFs are opaque |
+| **IDE Support** | Good (CLion, VS Code + C) | Excellent (GoLand, VS Code + Go) | IPF only — rest is unreadable |
+| **Hiring Difficulty** | **High** — C + telecom | **Low-Medium** — large Go pool | **High** — Radisys-specific tribal knowledge |
+| **Onboarding Time** | 4-8 weeks | 2-4 weeks | Weeks + vendor training — limited by binary opacity |
+| **Fix a bug yourself** | **Yes** — full source | **Yes** — full source | **IPF only** — NF bugs require vendor ticket |
 
 ### Developer Workflow on NUC 15
 
@@ -461,18 +520,20 @@ For our 20-UE lab, the **single CP image** approach is the clear winner — it e
 
 ### At Our Scale (20 Attached UEs)
 
-| Component | Open5GS (bare metal) | free5GC (single Docker) | Notes |
-|---|---|---|---|
-| **All CP NFs** | ~300-500 MB | ~500 MB - 1 GB | Go runtime adds ~200-400 MB overhead |
-| **UPF** | ~50-100 MB | ~100-200 MB | gtp5g kernel module for free5GC |
-| **MongoDB** | ~200 MB | ~200 MB | Cap WiredTiger cache at 256 MB |
-| **UERANSIM** | ~50 MB | ~50 MB | 20 UEs is trivial |
-| **Docker overhead** | 0 (bare metal) | ~100 MB | containerd + Docker daemon |
-| **Total** | **~600 MB - 1 GB** | **~1-1.5 GB** | |
-| **CPU (steady)** | ~0.2 core | ~0.2 core | |
-| **CPU (peak burst)** | ~1-2 cores (seconds) | ~1-2 cores (seconds) | During 200-ident / 400-reject burst |
-| **NUC 15 RAM used** | ~2-3% of 32 GB | ~3-5% of 32 GB | Both are negligible |
-| **NUC 15 CPU used** | ~1-2% of 12 cores | ~1-2% of 12 cores | Both are negligible |
+| Component | Open5GS (bare metal) | free5GC (single Docker) | Radisys | Notes |
+|---|---|---|---|---|
+| **All CP NFs** | ~300-500 MB | ~500 MB - 1 GB | ~4-8 GB | Radisys NFs are bloated with framework deps |
+| **15 Framework Components** | N/A | N/A | **~4-8 GB** | Mandatory — cannot be removed |
+| **UPF** | ~50-100 MB | ~100-200 MB | ~1-2 GB | Radisys UPF image is multi-GB |
+| **MongoDB** | ~200 MB | ~200 MB | ~200 MB | Same for all |
+| **UERANSIM** | ~50 MB | ~50 MB | ~50 MB | Same for all |
+| **Docker overhead** | 0 (bare metal) | ~100 MB | ~200 MB | More containers = more overhead |
+| **Docker image disk** | ~200 MB | ~500 MB | **30-50 GB** | Radisys: 20+ images × 2-5 GB each |
+| **Total RAM** | **~600 MB - 1 GB** | **~1-1.5 GB** | **~10-18 GB** | Radisys frameworks consume most of it |
+| **CPU (steady)** | ~0.2 core | ~0.2 core | ~2-4 cores | Framework overhead even at idle |
+| **CPU (peak burst)** | ~1-2 cores (seconds) | ~1-2 cores (seconds) | ~4-8 cores | During 200-ident / 400-reject burst |
+| **NUC 15 RAM used** | ~2-3% of 32 GB | ~3-5% of 32 GB | **30-55% of 32 GB** | Radisys barely fits |
+| **NUC 15 CPU used** | ~1-2% of 12 cores | ~1-2% of 12 cores | **15-30% of 12 cores** | Framework overhead is real |
 
 ### Per-NF Breakdown (at 20 UEs)
 
@@ -493,19 +554,21 @@ For our 20-UE lab, the **single CP image** approach is the clear winner — it e
 ```
 NUC 15 Pro Resource Utilization at 20 UEs
 
+                   Open5GS / free5GC              Radisys
 RAM (32 GB):
-██░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  5GC (~1-2 GB)
-░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  Free (30+ GB)
+  OSS:  ██░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  ~1-2 GB (3-5%)
+  Rad:  ██████████████████░░░░░░░░░░░░░░░░  ~10-18 GB (30-55%)
 
 CPU (12 cores):
-█░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  5GC (~0.3 core)
-░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  Free (11.7+ cores)
+  OSS:  █░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  ~0.3 core (2%)
+  Rad:  ██████████░░░░░░░░░░░░░░░░░░░░░░░  ~2-4 cores (25%)
 
 Disk (512 GB):
-█░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  5GC (<1 GB)
-░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  Free (511+ GB)
+  OSS:  █░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  <1 GB images
+  Rad:  ████████████░░░░░░░░░░░░░░░░░░░░░  30-50 GB images
 
-You could run 10-20 instances of the entire 5GC on this NUC.
+OSS: You could run 10-20 instances of the entire 5GC on this NUC.
+Radisys: The 15 mandatory frameworks alone consume half the NUC.
 ```
 
 ### Thermal on NUC 15
@@ -569,13 +632,14 @@ At our 20-UE workload, thermal is a **non-issue**:
 
 | Control | Open5GS | free5GC | Radisys |
 |---|---|---|---|
-| **Build from source** | Yes | Yes | No |
-| **Reproducible builds** | Yes (Meson) | Yes (Go modules) | No |
-| **SBOM generation** | Full (Syft, Trivy) | Full (Syft, Trivy) | Limited/None |
-| **CVE scanning** | Full (Trivy, Grype) | Full (Trivy, Grype) | Vendor responsibility |
-| **Patch turnaround** | Self-controlled (hours) | Self-controlled (hours) | Vendor SLA (days/weeks) |
-| **Full source audit** | Yes | Yes | **No** |
-| **TLS/mTLS config** | Configurable per NF | Configurable per NF | Vendor-managed |
+| **Build from source** | Yes | Yes | **IPF only** — all NFs are pre-built binaries |
+| **Reproducible builds** | Yes (Meson) | Yes (Go modules) | No — binaries are opaque |
+| **SBOM generation** | Full (Syft, Trivy) | Full (Syft, Trivy) | **None** — cannot inspect binary contents |
+| **CVE scanning** | Full (Trivy, Grype) | Full (Trivy, Grype) | **Limited** — can scan image layers but not binary internals |
+| **Patch turnaround** | Self-controlled (hours) | Self-controlled (hours) | Vendor queue — requested changes "take time" (weeks/months) |
+| **Full source audit** | Yes | Yes | **No** — only IPF is auditable; NFs + 15 frameworks are black boxes |
+| **TLS/mTLS config** | Configurable per NF | Configurable per NF | Vendor-managed — limited knobs exposed |
+| **Image provenance** | Build yourself, sign yourself | Build or pull, verify hash | Receive from vendor — trust their pipeline |
 
 ### Lab Security Note
 
@@ -588,14 +652,18 @@ On a single NUC 15 for lab use, security is less critical than production. That 
 ```
 Supply Chain Control
 
-  FULL CONTROL ◄───────────────────────────► ZERO CONTROL
-  ┌──────────┐  ┌──────────┐      ┌──────────┐
-  │ Open5GS  │  │ free5GC  │      │ Radisys  │
-  │ Build    │  │ Build    │      │ Receive  │
-  │ from src │  │ from src │      │ opaque   │
-  │ Audit    │  │ or pull  │      │ images   │
-  │ Sign     │  │ Docker   │      │ Trust    │
-  └──────────┘  └──────────┘      └──────────┘
+  FULL CONTROL ◄───────────────────────────────────────► ZERO CONTROL
+  ┌──────────┐  ┌──────────┐                ┌──────────────────────┐
+  │ Open5GS  │  │ free5GC  │                │ Radisys              │
+  │ Build    │  │ Build    │                │ IPF: source (1 comp) │
+  │ from src │  │ from src │                │ NFs: binaries (9)    │
+  │ Audit    │  │ or pull  │                │ Frameworks: bins (15)│
+  │ Sign     │  │ Docker   │                │ Images: 2-5 GB each  │
+  │ Full SBOM│  │ Full SBOM│                │ No SBOM, no audit    │
+  └──────────┘  └──────────┘                └──────────────────────┘
+                                             ↑
+                                 Asked to reduce image sizes
+                                 Response: "takes time"
 ```
 
 ---
@@ -618,17 +686,19 @@ Supply Chain Control
 
 ### Deployment & Management on NUC 15
 
-| Aspect | Open5GS | free5GC (single Docker) |
-|---|---|---|
-| **Install** | `apt install open5gs` | `docker pull` + `docker-compose up` |
-| **Config location** | `/etc/open5gs/*.yaml` | Mounted volume YAML files |
-| **Add subscriber** | `mongosh` or community WebUI | Built-in WebUI on port 5000 |
-| **Start/Stop** | `systemctl start/stop open5gs-*` | `docker-compose up/down` |
-| **Logs** | `journalctl -u open5gs-amfd` | `docker logs free5gc-cp` |
-| **Upgrade** | `apt upgrade open5gs` | `docker pull` new image, recreate |
-| **Rollback** | `apt install open5gs=<version>` | `docker run` with old image tag |
-| **Backup** | `mongodump` | `mongodump` |
-| **Monitoring (lab)** | `journalctl` + `top` is enough | `docker stats` + `docker logs` is enough |
+| Aspect | Open5GS | free5GC (single Docker) | Radisys |
+|---|---|---|---|
+| **Install** | `apt install open5gs` | `docker pull` + `docker-compose up` | Vendor PS + days of setup for 20+ containers |
+| **Config location** | `/etc/open5gs/*.yaml` | Mounted volume YAML files | Vendor-specific config portal |
+| **Add subscriber** | `mongosh` or community WebUI | Built-in WebUI on port 5000 | Vendor portal |
+| **Start/Stop** | `systemctl start/stop open5gs-*` | `docker-compose up/down` | Orchestrated startup order (framework deps) |
+| **Logs** | `journalctl -u open5gs-amfd` | `docker logs free5gc-cp` | 20+ container logs, vendor format |
+| **Upgrade** | `apt upgrade open5gs` | `docker pull` new image, recreate | Wait for vendor release → pull 30-50 GB of images |
+| **Rollback** | `apt install open5gs=<version>` | `docker run` with old image tag | Revert all 20+ images to previous version |
+| **Backup** | `mongodump` | `mongodump` | `mongodump` + vendor config export |
+| **Monitoring (lab)** | `journalctl` + `top` is enough | `docker stats` + `docker logs` is enough | Need monitoring for 20+ containers |
+| **Debug a bug** | Read source, fix, rebuild | Read source, fix, rebuild | Read logs → open vendor ticket → wait |
+| **Image pull time** | Seconds (~200 MB) | Seconds (~500 MB) | **30-60 min** (30-50 GB of images) |
 
 ### Do You Need Prometheus/Grafana?
 
@@ -702,9 +772,11 @@ For a **lab/PoC**, high availability is not a real requirement. But basic resili
 | **free5GC → Open5GS** (same NUC) | Low | 1 day | Remove gtp5g. Free up some RAM. Lose WebUI/N3IWF. |
 | **Single Docker → K8s (free5GC)** | Low | 1 day | Split single image into per-NF Helm chart. Same configs. |
 | **NUC → Multi-node cluster** | Low-Med | 1-2 weeks | Same Helm charts, more nodes. Add real HA. |
-| **Either OSS → Radisys** | High | 4-8 weeks | Complete re-provisioning. Leave NUC world. |
+| **Either OSS → Radisys** | High | 4-8 weeks | Complete re-provisioning. Leave NUC world. 30-50 GB image downloads. |
+| **Radisys → Either OSS** | Medium | 1-2 weeks | Subscriber data portable via MongoDB. No vendor lock-in on data. But must rebuild all configs. |
+| **Radisys image optimization** | Vendor-dependent | Weeks-months | Asked to reduce — "takes time". You cannot optimize binaries yourself. |
 
-> **Strategy:** Start with whichever feels right. At 20 UEs, migrating between Open5GS and free5GC is a 1-2 day exercise. Don't overthink it.
+> **Strategy:** Start with whichever OSS feels right. At 20 UEs, migrating between Open5GS and free5GC is a 1-2 day exercise. Migrating away from Radisys is harder due to vendor-specific configs, but subscriber data in MongoDB is portable. Don't overthink it.
 
 ---
 
@@ -747,24 +819,36 @@ For a **lab/PoC**, high availability is not a real requirement. But basic resili
   Radisys              ████████████████████████████████████████  ~$800K
 
   For a 20-UE lab, both OSS options cost the same. The NUC is the only expense.
+
+Hidden Radisys Costs Not in TCO:
+  ├── Team time wasted debugging opaque binaries (logs only)
+  ├── Weeks waiting for vendor to reduce image sizes
+  ├── 30-50 GB disk for images (vs <1 GB for OSS)
+  ├── Higher NUC RAM requirement (32 GB minimum, 64 GB recommended)
+  └── Vendor lock-in: switching cost grows over time
 ```
 
 ---
 
 ## 19. Risk Register
 
-| Risk | Open5GS | free5GC | Mitigation |
-|---|:---:|:---:|---|
-| **NUC 15 hardware failure** | Equal | Equal | Keep configs in git. Redeploy on new NUC in 30 min |
-| **gtp5g kernel breakage** | N/A | **Medium** | Pin kernel version; DKMS auto-rebuild |
-| **NUC 15 kernel update breaks gtp5g** | N/A | **Medium** | `apt-mark hold linux-image-*` or DKMS |
-| **Lead maintainer leaves** | HIGH | Medium | Fork capability; growing community |
-| **Critical CVE** | Self-patch (hours) | Self-patch (hours) | OSS advantage |
-| **License dispute** | Medium (AGPLv3) | Low (Apache 2.0) | Legal review if commercializing |
-| **Outgrow NUC 15** | Low | Low | Same configs → multi-node cluster |
-| **Team turnover** | HIGH (C skills) | Medium (Go skills) | Document setup; automate with scripts |
+| Risk | Open5GS | free5GC | Radisys | Mitigation |
+|---|:---:|:---:|:---:|---|
+| **NUC 15 hardware failure** | Equal | Equal | Equal | Keep configs in git. Redeploy in 30 min (OSS) / days (Radisys) |
+| **gtp5g kernel breakage** | N/A | **Medium** | N/A | Pin kernel version; DKMS auto-rebuild |
+| **NUC 15 kernel update breaks gtp5g** | N/A | **Medium** | N/A | `apt-mark hold linux-image-*` or DKMS |
+| **Lead maintainer leaves** | HIGH | Medium | N/A | Fork capability; growing community |
+| **Critical CVE** | Self-patch (hours) | Self-patch (hours) | **Wait for vendor** | OSS: fix yourself. Radisys: ticket queue |
+| **CVE in binary component** | N/A | N/A | **HIGH** | Cannot scan, cannot patch — fully vendor-dependent |
+| **License dispute** | Medium (AGPLv3) | Low (Apache 2.0) | **HIGH** | Radisys proprietary terms can change |
+| **Outgrow NUC 15** | Low | Low | **Already at limit** | OSS: same configs → cluster. Radisys: already strained |
+| **Team turnover** | HIGH (C skills) | Medium (Go skills) | **HIGH** | Radisys: new team can't debug binaries |
+| **Vendor becomes unresponsive** | N/A | N/A | **HIGH** | Stuck with current binaries, no path to self-fix |
+| **Image bloat blocks deployment** | N/A | N/A | **HIGH** | 30-50 GB images; asked for reduction → "takes time" |
+| **Framework component failure** | N/A | N/A | **HIGH** | 1 of 15 frameworks fails → entire 5GC may go down |
+| **Cannot reproduce a bug** | Low | Low | **HIGH** | No source = no debugging; only logs + vendor tickets |
 
-At our lab scale, most risks are **low impact**. The biggest real risk is gtp5g kernel compatibility (free5GC only).
+At our lab scale, OSS risks are **low impact**. Radisys risks are **structurally higher** — binary opacity, vendor dependency, and framework overhead create compounding issues that OSS simply doesn't have.
 
 ---
 
@@ -789,12 +873,17 @@ At our lab scale, most risks are **low impact**. The biggest real risk is gtp5g 
 - You accept the gtp5g kernel module dependency
 - You want the option to scale to K8s later by splitting the image into per-NF pods
 
-### Skip Radisys:
+### Skip Radisys — Here's Why (From Real Experience):
 
-- Not viable for NUC deployment
-- Not sensible for 20-UE lab
-- $200K+ for what you get free with OSS
-- Only consider if zero in-house 5G expertise AND budget allows it AND you need carrier-grade
+- **Only IPF source code** — every other component is a pre-compiled binary you cannot read, audit, or modify
+- **15 mandatory framework components** — cannot remove any of them, even for a simple lab; every NF depends on all 15
+- **Bloated Docker images** — 2-5+ GB per NF image; total image pull is 30-50 GB vs ~500 MB for OSS
+- **Framework overhead** — 8-16 GB RAM consumed by frameworks alone before a single UE attaches
+- **Vendor velocity** — requested image size reduction, response: "takes time" (weeks to months)
+- **Debugging is blind** — NF crashes? Read logs and open a ticket. Can't step through binary code
+- **$200K+ for what you get free** — both OSS options provide full source, lighter images, and faster iteration
+- **NUC 15 barely fits it** — 15 frameworks + 9 NFs = 20+ containers consuming 30-55% of NUC resources at idle
+- **Only consider if:** zero in-house 5G expertise AND unlimited budget AND carrier-grade SLA is contractually required
 
 ### Decision Flowchart
 
