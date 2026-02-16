@@ -10,9 +10,9 @@
 
 | | Open5GS | free5GC | Radisys |
 |---|---|---|---|
-| **One-liner** | Lean C core — full 5GC + EPC, bare-metal simplicity | Go core — all CP in a single Docker image, Apache 2.0 | Binary black-box — only IPF source, 15 mandatory frameworks |
+| **One-liner** | Lean C core — full 5GC + EPC, bare-metal simplicity | Go core — all CP in a single Docker image, Apache 2.0 | IPF + AMF + SMF source, rest binary, 15 mandatory frameworks |
 | **Best for** | Hybrid LTE+5G, `apt install` simplicity | Docker workflow, permissive license, broader NF coverage | Zero in-house expertise, carrier-grade SLA requirement |
-| **Source access** | Full (AGPLv3) | Full (Apache 2.0) | **IPF only** — all NFs are binaries |
+| **Source access** | Full (AGPLv3) | Full (Apache 2.0) | **IPF + AMF + SMF only** — rest are binaries |
 | **Language** | C | Go | Undisclosed (binaries) |
 | **Lab deployment** | `apt install open5gs` | `docker compose up` (single CP image + UPF) | 20+ containers (9 NFs + 15 frameworks) |
 | **Year-1 cost** | ~$830 | ~$830 | $200K+ |
@@ -80,14 +80,16 @@ Total: 3 containers (CP + UPF + MongoDB)
 ### 2.3 Radisys — Vendor Reality
 
 ```
-┌─ Source Code Access (1 of ~20 components) ────────────────────┐
+┌─ Source Code Access (3 of ~20 components) ────────────────────┐
 │  IPF (Interoperability Framework)                              │
-│  └── The ONLY codebase you can read, modify, or debug          │
+│  AMF (Access & Mobility Management Function)                   │
+│  SMF (Session Management Function)                             │
+│  └── These 3 you can read, modify, and debug                   │
 └────────────────────────────────────────────────────────────────┘
 
 ┌─ Binary-Only (everything else) ───────────────────────────────┐
 │                                                                │
-│  9 NFs: AMF │ SMF │ UPF │ NRF │ UDM │ UDR │ AUSF │ PCF │ NSSF│
+│  7 NFs: UPF │ NRF │ UDM │ UDR │ AUSF │ PCF │ NSSF             │
 │                                                                │
 │  15 Mandatory Framework Components:                            │
 │  Service mesh, logging, config mgmt, health checks,           │
@@ -103,13 +105,15 @@ Total: 3 containers (CP + UPF + MongoDB)
 
 | Aspect | Reality |
 |---|---|
-| Source code | **IPF only** — one component out of ~20 |
-| NF logic | Pre-compiled binaries — cannot read, audit, or modify |
+| Source code | **IPF + AMF + SMF** — 3 components out of ~20 |
+| AMF / SMF | Full source — can read, modify, rebuild |
+| Other NFs (UPF, NRF, UDM, etc.) | Pre-compiled binaries — cannot read, audit, or modify |
 | Frameworks | 15 mandatory — cannot remove any, even for a basic lab |
 | Image sizes | 2-5+ GB per NF; optimization requested → "takes time" |
-| Bug in an NF | Open ticket → wait for vendor (days to weeks) |
-| Custom behavior | Not possible — no hooks, no extension points in NFs |
-| Debugging | Logs only — cannot step through binary code |
+| Bug in AMF/SMF | Can debug and fix yourself |
+| Bug in other NFs | Open ticket → wait for vendor (days to weeks) |
+| Custom behavior | AMF/SMF: possible. Everything else: not possible |
+| Debugging | AMF/SMF: full source. Other NFs: logs only |
 
 ---
 
@@ -117,8 +121,8 @@ Total: 3 containers (CP + UPF + MongoDB)
 
 | Network Function | Role | Open5GS | free5GC | Radisys |
 |---|---|:---:|:---:|:---:|
-| AMF | Access & Mobility | Yes | Yes | Yes (binary) |
-| SMF | Session Management | Yes | Yes | Yes (binary) |
+| AMF | Access & Mobility | Yes | Yes | Yes (**source**) |
+| SMF | Session Management | Yes | Yes | Yes (**source**) |
 | UPF | User Plane | Yes (userspace) | Yes (gtp5g kernel) | Yes (binary) |
 | NRF | NF Discovery | Yes | Yes | Yes (binary) |
 | UDM / UDR / AUSF | Auth & Data | Yes | Yes | Yes (binary) |
@@ -161,10 +165,10 @@ At this scale, Open5GS and free5GC are functionally identical in resource consum
 | Install | `apt install open5gs` | `docker compose up` | Vendor PS + days of setup |
 | Add subscriber | `mongosh` CLI | WebUI (port 5000) | Vendor portal |
 | View logs | `journalctl -u open5gs-amfd` | `docker logs free5gc-cp` | 20+ container logs |
-| Fix a bug | Read source → fix → rebuild | Read source → fix → rebuild | Logs → ticket → wait |
+| Fix a bug | Read source → fix → rebuild | Read source → fix → rebuild | AMF/SMF: fix yourself. Others: ticket → wait |
 | Upgrade | `apt upgrade` | `docker pull` new tag | Pull 30-50 GB of images |
-| Debug a crash | GDB + core dump + full source | Delve + goroutine traces | Logs only — NFs are opaque |
-| Build time | ~2 min (Meson + Ninja) | ~1 min (`go build`) | IPF only; NFs are pre-built |
+| Debug a crash | GDB + core dump + full source | Delve + goroutine traces | AMF/SMF: full debug. Others: logs only |
+| Build time | ~2 min (Meson + Ninja) | ~1 min (`go build`) | IPF+AMF+SMF buildable; rest pre-built |
 | Hiring pool | Harder (C + telecom) | Easier (large Go pool) | Radisys-specific tribal knowledge |
 | Onboarding | 4-8 weeks | 2-4 weeks | Weeks + limited by binary opacity |
 
@@ -174,11 +178,11 @@ At this scale, Open5GS and free5GC are functionally identical in resource consum
 
 | Control | Open5GS | free5GC | Radisys |
 |---|---|---|---|
-| Build from source | Yes | Yes | IPF only |
+| Build from source | Yes | Yes | IPF + AMF + SMF only |
 | SBOM generation | Full | Full | **None** — cannot inspect binaries |
 | CVE scanning | Full (Trivy, Grype) | Full | Limited — cannot scan binary internals |
 | Patch turnaround | Self-fix (hours) | Self-fix (hours) | Vendor queue (weeks/months) |
-| Full source audit | Yes | Yes | **No** — only IPF auditable |
+| Full source audit | Yes | Yes | **Partial** — IPF + AMF + SMF auditable, rest opaque |
 
 ```
 Supply Chain Control Spectrum
@@ -186,9 +190,9 @@ Supply Chain Control Spectrum
   FULL CONTROL ◄──────────────────────────────────► ZERO CONTROL
   ┌──────────┐  ┌──────────┐         ┌──────────────────────────┐
   │ Open5GS  │  │ free5GC  │         │ Radisys                  │
-  │ Full src │  │ Full src │         │ IPF: source (1 of ~20)   │
-  │ Full SBOM│  │ Full SBOM│         │ Everything else: binary  │
-  └──────────┘  └──────────┘         │ No SBOM, no audit        │
+  │ Full src │  │ Full src │         │ IPF+AMF+SMF: source      │
+  │ Full SBOM│  │ Full SBOM│         │ UPF,NRF,UDM,etc: binary  │
+  └──────────┘  └──────────┘         │ Partial SBOM, limited    │
                                      └──────────────────────────┘
 ```
 
@@ -297,17 +301,55 @@ Hidden Radisys costs: team time debugging opaque binaries, weeks waiting for ima
 
 ---
 
-## 14. Risk Register
+## 14. Risks & Missing Features
+
+This is the critical section — what you **don't** get with each option and what can go wrong.
+
+### 14.1 Missing Features & Functional Gaps
+
+| Capability | Open5GS | free5GC | Radisys |
+|---|---|---|---|
+| N3IWF (WiFi offload) | **Missing** | Available | Binary — claimed |
+| CHF (Charging) | **Missing** | Available | Binary — claimed |
+| NEF (Network Exposure) | Partial | Available | Binary — claimed |
+| TNGF (Trusted Non-3GPP) | **Missing** | Available | Unknown |
+| EPC / 4G fallback | Available | **Missing** | Separate product (extra cost) |
+| Built-in WebUI | **Missing** (CLI only) | Available | Vendor portal |
+| Network slicing (E2E) | Basic NSSF | Basic NSSF | **Claimed full** — but cannot verify (binary) |
+| Edge / MEC integration | Community efforts | Community efforts | **Claimed** — cannot verify |
+| Commercial support | Community only | Academic + community | **Available** — but slow responsiveness |
+
+**What this means in practice:**
+
+- **Open5GS** — if you need WiFi offload (N3IWF), charging (CHF), or network exposure APIs (NEF), you're blocked. These don't exist in the codebase. Workaround: implement yourself in C, or switch to free5GC.
+- **free5GC** — if you need LTE/4G interop (EPC), you're blocked. free5GC is 5G-only. Workaround: run a separate EPC alongside, or use Open5GS.
+- **Radisys** — features are "claimed" in datasheets but you **cannot verify** because the NFs are binaries. What works on paper may not work in your deployment. Only AMF and SMF can be validated through source.
+
+### 14.2 Risk Register
 
 | Risk | Open5GS | free5GC | Radisys |
 |---|---|---|---|
-| gtp5g kernel breakage | N/A | Medium (pin kernel) | N/A |
-| Lead maintainer leaves | High (fork possible) | Medium (fork possible) | N/A |
-| Critical CVE | Self-patch in hours | Self-patch in hours | Wait for vendor |
-| CVE in binary component | N/A | N/A | **High** — cannot scan or patch |
-| Vendor unresponsive | N/A | N/A | **High** — stuck with current binaries |
-| Framework component failure | N/A | N/A | **High** — 1 of 15 fails → 5GC down |
-| Cannot reproduce a bug | Low | Low | **High** — no source, logs only |
+| **gtp5g kernel breakage** | N/A | Medium — pin kernel version | N/A |
+| **Lead maintainer leaves** | High — single key person (Sukchan Lee) | Medium — NYCU academic team | N/A |
+| **Critical CVE in NF** | Self-patch in hours | Self-patch in hours | AMF/SMF: self-patch. Others: wait for vendor |
+| **CVE in binary component** | N/A | N/A | **High** — cannot scan or patch UPF/NRF/UDM/etc. |
+| **Vendor unresponsive** | N/A | N/A | **High** — stuck with current binaries for non-AMF/SMF |
+| **Framework failure** | N/A | N/A | **High** — 1 of 15 mandatory frameworks fails → entire 5GC down |
+| **Cannot reproduce a bug** | Low — full source | Low — full source | AMF/SMF: low. Others: **high** — logs only |
+| **Feature roadmap blocked** | Medium — depends on community | Medium — depends on NYCU | **High** — depends entirely on vendor priority |
+| **Integration testing** | Full control | Full control | Limited — can only test AMF/SMF changes against binary NFs |
+| **Upgrade risk** | Low — incremental `apt upgrade` | Low — `docker pull` | **High** — 30-50 GB image pull, framework version coupling |
+
+### 14.3 Radisys-Specific Risks (From Real Experience)
+
+| Risk | Impact | Mitigation |
+|---|---|---|
+| Bug in UPF/NRF/UDM/UDR/AUSF/PCF/NSSF | **Blocked** — cannot fix, must wait for vendor patch | Escalation process + SLA enforcement |
+| Image size bloat (2-5 GB each) | Slow deployments, high disk usage, long rollback times | Requested reduction — vendor says "takes time" |
+| 15 mandatory frameworks | Any framework update can break NF compatibility | Version lock — but then miss security patches |
+| AMF/SMF source divergence | Your AMF/SMF modifications may conflict with vendor's next release | Maintain patch sets, not forks |
+| Vendor discontinues product | **Stranded** — binary NFs have no alternative | Contractual source escrow (if negotiated) |
+| Partial source gives false confidence | Having AMF+SMF source ≠ having control over the core | Clearly document what you own vs. what you don't |
 
 ---
 
@@ -342,15 +384,16 @@ Start with whichever OSS feels right. At 20 UEs, switching takes a day or two.
 - Team has Go / container skills
 - Want option to scale to K8s later
 
-### Why Radisys Doesn't Fit (From Real Experience):
-- **Only IPF source code** — every other component is binary
+### Why Radisys Is Risky (From Real Experience):
+- **Partial source only** — IPF + AMF + SMF source shared, but UPF/NRF/UDM/UDR/AUSF/PCF/NSSF remain binaries
 - **15 mandatory frameworks** — cannot remove any; every NF depends on all 15
 - **2-5 GB per NF image** — 30-50 GB total vs ~500 MB for OSS
 - **Framework overhead** — 8-16 GB RAM before a single UE attaches
 - **Slow vendor velocity** — image reduction requested → "takes time"
-- **Blind debugging** — NF crash = logs + vendor ticket
+- **Mixed debugging** — AMF/SMF bugs fixable, everything else = logs + vendor ticket
+- **False sense of control** — having AMF+SMF source ≠ owning the core; 7 NFs are still opaque
 - **$200K+ for what OSS provides free** with full source and lighter images
-- Only consider if: zero in-house 5G expertise AND unlimited budget AND carrier-grade SLA is contractually required
+- Only consider if: you specifically need Radisys AMF/SMF customization AND have budget for the rest being vendor-managed
 
 ```
 Decision Flowchart:
